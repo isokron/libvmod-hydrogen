@@ -6,7 +6,7 @@
 #include "cache/cache.h"
 
 #include "vtim.h"
-#include "vcc_example_if.h"
+#include "vcc_hydrogen_if.h"
 
 const size_t infosz = 64;
 char	     *info;
@@ -50,7 +50,7 @@ vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 	}
 	AN(event);
 	VTIM_format(VTIM_real(), ts);
-	snprintf(info, infosz, "vmod_example %s at %s", event, ts);
+	snprintf(info, infosz, "vmod_hydrogen %s at %s", event, ts);
 
 	return (0);
 }
