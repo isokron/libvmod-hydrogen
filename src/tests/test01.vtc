@@ -7,30 +7,16 @@ server s1 {
 
 varnish v1 -vcl+backend {
 	import std;
-	import ${vmod_hydrogen};
-
-	sub vcl_init {
-		std.log(hydrogen.info());
-	}
+	import hydrogen from "${pwd}/../.libs/libvmod_hydrogen.so";
 
 	sub vcl_deliver {
-		set resp.http.hello = hydrogen.hello("World");
-		set resp.http.info = hydrogen.info();
+		set resp.http.hello = hydrogen.encrypt("the brown fox jumped over the lazy dog", "key");
+		set resp.http.hello2 = hydrogen.decrypt(resp.http.hello, "key");
 	}
-} -start
-
-logexpect l1 -v v1 -g raw -d 1 {
-	expect 0 0    CLI     {^Rd vcl.load}
-	expect 0 =    VCL_Log {^vmod_hydrogen loaded at }
 } -start
 
 client c1 {
 	txreq -url "/"
 	rxresp
-	expect resp.http.hello == "Hello, World"
-	expect resp.http.info  ~  "^vmod_hydrogen warmed at "
-}
-
-client c1 -run
-
-logexpect l1 -wait
+	expect resp.http.hello2 == "the brown fox jumped over the lazy dog"
+} -run

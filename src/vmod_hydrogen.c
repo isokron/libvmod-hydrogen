@@ -2,83 +2,93 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "cache/cache.h"
 
 #include "vtim.h"
 #include "vcc_hydrogen_if.h"
 
-const size_t infosz = 64;
-char	     *info;
+#include "base64.h"
+#include "libhydrogen/hydrogen.h"
 
-/*
- * handle vmod internal state, vmod init/fini and/or varnish callback
- * (un)registration here.
- *
- * malloc'ing the info buffer is only indended as a demonstration, for any
- * real-world vmod, a fixed-sized buffer should be a global variable
- */
 
 int v_matchproto_(vmod_event_f)
 vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
-	char	   ts[VTIM_FORMAT_SIZE];
-	const char *event = NULL;
-
-	(void) ctx;
-	(void) priv;
+	(void)ctx;
+	(void)priv;
 
 	switch (e) {
 	case VCL_EVENT_LOAD:
-		info = malloc(infosz);
-		if (! info)
-			return (-1);
-		event = "loaded";
+		if (hydro_init() != 0) {
+			VRT_fail(ctx, "libhydrogen unable to hydro_init()");
+		}
 		break;
 	case VCL_EVENT_WARM:
-		event = "warmed";
-		break;
 	case VCL_EVENT_COLD:
-		event = "cooled";
-		break;
 	case VCL_EVENT_DISCARD:
-		free(info);
-		return (0);
 		break;
-	default:
-		return (0);
 	}
-	AN(event);
-	VTIM_format(VTIM_real(), ts);
-	snprintf(info, infosz, "vmod_hydrogen %s at %s", event, ts);
-
 	return (0);
 }
 
-VCL_STRING
-vmod_info(VRT_CTX)
-{
-	(void) ctx;
 
-	return (info);
+/*
+ * Encrypt a string, encode it to base64, put on workspace and return.
+ *
+ */
+
+
+
+
+VCL_STRING
+vmod_encrypt(VRT_CTX, VCL_STRING str, VCL_STRING key)
+{
+	(void)key;
+	if (str == NULL) {
+		return(NULL);
+	}
+	if (key == NULL) {
+		VRT_fail(ctx, "key must be set");
+	}
+
+	// TODO: encrypt string
+
+	int enclen = pg_b64_enc_len(strlen(str));
+	enclen = 200; // FIXME
+
+	char *encoded = WS_Alloc(ctx->ws, enclen+1);
+	AN(encoded);
+	memset(encoded, '\0', enclen+1);
+
+	int len = pg_b64_encode(str, strlen(str), encoded, enclen);
+	assert(len >= 0);
+	printf("Encoded text is: \"%s\" (%i bytes in %lu sized buffer)\n", encoded, len, sizeof(encoded));
+	fflush(NULL);
+	return (encoded);
 }
 
 VCL_STRING
-vmod_hello(VRT_CTX, VCL_STRING name)
+vmod_decrypt(VRT_CTX, VCL_STRING b64str, VCL_STRING key)
 {
-	char *p;
-	unsigned u, v;
-
-	u = WS_Reserve(ctx->ws, 0); /* Reserve some work space */
-	p = ctx->ws->f;		/* Front of workspace area */
-	v = snprintf(p, u, "Hello, %s", name);
-	v++;
-	if (v > u) {
-		/* No space, reset and leave */
-		WS_Release(ctx->ws, 0);
-		return (NULL);
+	if (b64str == NULL) {
+		return(NULL);
 	}
-	/* Update work space with what we've used */
-	WS_Release(ctx->ws, v);
-	return (p);
+	if (key == NULL) {
+		VRT_fail(ctx, "key must be set");
+	}
+
+	int declen = pg_b64_dec_len(strlen(b64str));
+	declen = 100;
+
+	char *decoded = WS_Alloc(ctx->ws, declen+1);
+	AN(decoded);
+	memset(decoded, '\0', declen+1);
+
+	int len = pg_b64_decode(b64str, strlen(b64str), decoded, declen);
+	assert(len >= 0);
+    // extern int pg_b64_decode(const char *src, int len, char *dst, int dstlen);
+	printf("Decoded text is: \"%s\" (%d==%lu bytes in %lu byte buffer)", decoded, len, strlen(decoded), sizeof(decoded) );
+	return (decoded);
 }

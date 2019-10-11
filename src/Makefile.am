@@ -1,10 +1,16 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
 AM_CFLAGS = $(VARNISHAPI_CFLAGS) -Wall -Werror
 AM_LDFLAGS = $(VARNISHAPI_LIBS) $(VMOD_LDFLAGS)
 
 vmod_LTLIBRARIES = libvmod_hydrogen.la
 
 libvmod_hydrogen_la_SOURCES = \
-	vmod_hydrogen.c
+	vmod_hydrogen.c \
+	libhydrogen/hydrogen.c \
+	libhydrogen/hydrogen.h \
+	base64.c \
+	base64.h
 
 nodist_libvmod_hydrogen_la_SOURCES = \
 	vcc_hydrogen_if.c \
