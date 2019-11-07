@@ -10,9 +10,25 @@ varnish v1 -vcl+backend {
 	import hydrogen from "${pwd}/../.libs/libvmod_hydrogen.so";
 
 	sub vcl_deliver {
+                # Does encryption work?
 		set resp.http.hello = hydrogen.encrypt("the brown fox jumped over the lazy dog", "key");
+                # Can we decrypt it?
 		set resp.http.hello2 = hydrogen.decrypt(resp.http.hello, "key", "fallback_value");
+                # Can we do both in one go?
+		set resp.http.hello3 = hydrogen.decrypt(hydrogen.encrypt("foo", "key"), "key", "fallback_value");
+
+                # Decryption fails should yield the fallback value.
 		set resp.http.fallback = hydrogen.decrypt(resp.http.hello, "incorrect_key", "fallback_value");
+
+		set resp.http.key1 = hydrogen.encrypt("foo", "sie6aeV7eex9iebahch9aiquejie6bohgea");
+		set resp.http.key2 = hydrogen.decrypt(resp.http.key1, "sie6aeV7eex9iebahch9aiquejie6bohgea", "fallback_value");
+
+                # Does proper keys work as expected?
+                set req.http.longkey = "sie6aeV7eex9iebahch9aiquejie6bohg";
+		set resp.http.l1 = hydrogen.decrypt(hydrogen.encrypt("foo", req.http.longkey), req.http.longkey, "fallback");
+
+                # No errors on >32 byte key.
+		set resp.http.l2 = hydrogen.encrypt("foo", "Poj3AifaheNiasuawo9waequaa8aex9ahp1oweF9AhBaahi0ik");
 	}
 } -start
 
@@ -20,5 +36,11 @@ client c1 {
 	txreq -url "/"
 	rxresp
 	expect resp.http.hello2 == "the brown fox jumped over the lazy dog"
+	expect resp.http.hello3 == "foo"
+
 	expect resp.http.fallback == "fallback_value"
+
+	expect resp.http.l1 == "foo"
+
+	expect resp.http.l2 != ""
 } -run
