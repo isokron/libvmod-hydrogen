@@ -8,9 +8,7 @@ vmod_LTLIBRARIES = libvmod_hydrogen.la
 libvmod_hydrogen_la_SOURCES = \
 	vmod_hydrogen.c \
 	libhydrogen/hydrogen.c \
-	libhydrogen/hydrogen.h \
-	base64.c \
-	base64.h
+	libhydrogen/hydrogen.h
 
 nodist_libvmod_hydrogen_la_SOURCES = \
 	vcc_hydrogen_if.c \

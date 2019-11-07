@@ -5,12 +5,18 @@
 #include <string.h>
 
 #include "cache/cache.h"
-
 #include "vtim.h"
+#include "libhydrogen/hydrogen.h"
+
 #include "vcc_hydrogen_if.h"
 
-#include "base64.h"
-#include "libhydrogen/hydrogen.h"
+#define HYDROGEN_CONTEXT "vmod-hydrogen"
+
+#if VRT_MAJOR_VERSION == 7
+#define WS_RES(c) WS_Reserve(c, 0)
+#else
+#define WS_RES(c) WS_ReserveAll(c)
+#endif
 
 
 int v_matchproto_(vmod_event_f)
@@ -35,60 +41,113 @@ vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 
 
 /*
- * Encrypt a string, encode it to base64, put on workspace and return.
- *
+ * Encrypt a string, copy the encoded version to the workspace, and return that
+ * back to VCL.
  */
-
-
-
-
 VCL_STRING
 vmod_encrypt(VRT_CTX, VCL_STRING str, VCL_STRING key)
 {
-	(void)key;
+	char *encoded = NULL;
+
 	if (str == NULL) {
-		return(NULL);
+		VRT_fail(ctx, "encrypt(): str can not be empty");
+		return (NULL);
 	}
+
 	if (key == NULL) {
-		VRT_fail(ctx, "key must be set");
+		VRT_fail(ctx, "encrypt(): key must be set");
+		return (NULL);
 	}
 
-	// TODO: encrypt string
+    int cipherlen = hydro_secretbox_HEADERBYTES + strlen(str);
 
-	int enclen = pg_b64_enc_len(strlen(str));
-	enclen = 200; // FIXME
+    uint8_t * ciphertext = alloca(cipherlen);
+    AN(ciphertext);
 
-	char *encoded = WS_Alloc(ctx->ws, enclen+1);
-	AN(encoded);
-	memset(encoded, '\0', enclen+1);
+    if (hydro_secretbox_encrypt(ciphertext, str, strlen(str), 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
+		VRT_fail(ctx, "encryption failed");
+        return (NULL);
+	}
 
-	int len = pg_b64_encode(str, strlen(str), encoded, enclen);
-	assert(len >= 0);
-	printf("Encoded text is: \"%s\" (%i bytes in %lu sized buffer)\n", encoded, len, sizeof(encoded));
-	fflush(NULL);
+	int enclen = cipherlen * 2 + 1;   // Per the documentation.
+
+    unsigned maxlen = WS_RES(ctx->ws);
+	if (maxlen < enclen) {
+        WS_Release(ctx->ws, 0);
+		VRT_fail(ctx, "allocation failed");
+        return(NULL);
+	}
+
+	memset(ctx->ws->f, '\0', enclen+1);
+	encoded = hydro_bin2hex(ctx->ws->f, enclen, ciphertext, cipherlen);
+	if (encoded == NULL) {
+        WS_Release(ctx->ws, 0);
+		VRT_fail(ctx, "hex encoding failed");
+        return(NULL);
+	}
+
+	WS_Release(ctx->ws, enclen);
 	return (encoded);
 }
 
+
 VCL_STRING
-vmod_decrypt(VRT_CTX, VCL_STRING b64str, VCL_STRING key)
+vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING fallback)
 {
-	if (b64str == NULL) {
-		return(NULL);
+	void * cleartext = NULL;
+	int cipherlen;
+
+	if (encoded_ciphertext == NULL) {
+		VRT_fail(ctx, "decrypt(): ciphertext can not be empty");
+		return (NULL);
 	}
 	if (key == NULL) {
-		VRT_fail(ctx, "key must be set");
+		VRT_fail(ctx, "decrypt(): key must be set");
+		return (NULL);
 	}
 
-	int declen = pg_b64_dec_len(strlen(b64str));
-	declen = 100;
+	/* Decode the HEX encoded ciphertext to binary on the stack. */
+	uint8_t * ciphertext = alloca(strlen(encoded_ciphertext));
+	AN(ciphertext);
 
-	char *decoded = WS_Alloc(ctx->ws, declen+1);
-	AN(decoded);
-	memset(decoded, '\0', declen+1);
+	cipherlen = hydro_hex2bin(ciphertext, strlen(encoded_ciphertext),
+								  encoded_ciphertext, strlen(encoded_ciphertext),
+								  NULL, NULL);
 
-	int len = pg_b64_decode(b64str, strlen(b64str), decoded, declen);
-	assert(len >= 0);
-    // extern int pg_b64_decode(const char *src, int len, char *dst, int dstlen);
-	printf("Decoded text is: \"%s\" (%d==%lu bytes in %lu byte buffer)", decoded, len, strlen(decoded), sizeof(decoded) );
-	return (decoded);
+	if (cipherlen < 0) {
+		VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): hex decoding failed");
+        goto err;
+	}
+
+	/* Get some buffer space to place the decrypted string into */
+    unsigned maxlen = WS_RES(ctx->ws);
+	if (maxlen <= 0) {
+        WS_Release(ctx->ws, 0);
+		VRT_fail(ctx, "allocation failed");
+        return (NULL);
+	}
+
+	unsigned ws_needed = cipherlen - hydro_secretbox_HEADERBYTES + 1;
+	if (maxlen < ws_needed) {
+        WS_Release(ctx->ws, 0);
+		VRT_fail(ctx, "decrypt(): workspace would overflow");
+		return (NULL);
+    }
+
+	cleartext = ctx->ws->f;
+	memset(cleartext, '\0', ws_needed);
+
+	if (hydro_secretbox_decrypt(cleartext, ciphertext, cipherlen, 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
+		VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): decryption failed");
+		goto err;
+    }
+
+	assert(strlen(cleartext) == cipherlen - hydro_secretbox_HEADERBYTES);
+	WS_Release(ctx->ws, cipherlen - hydro_secretbox_HEADERBYTES);
+	return (cleartext);
+
+err:
+	strcpy(cleartext, fallback);
+	WS_Release(ctx->ws, strlen(cleartext));
+	return (cleartext);
 }

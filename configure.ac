@@ -7,7 +7,7 @@ AC_CONFIG_SRCDIR(src/vmod_hydrogen.vcc)
 AC_CONFIG_HEADER([config.h])
 
 AM_INIT_AUTOMAKE([1.12 -Wall -Werror foreign parallel-tests])
-AM_SILENT_RULES([yes])
+#AM_SILENT_RULES([yes])
 AM_PROG_AR
 
 LT_PREREQ([2.2.6])

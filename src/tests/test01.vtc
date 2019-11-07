@@ -11,7 +11,8 @@ varnish v1 -vcl+backend {
 
 	sub vcl_deliver {
 		set resp.http.hello = hydrogen.encrypt("the brown fox jumped over the lazy dog", "key");
-		set resp.http.hello2 = hydrogen.decrypt(resp.http.hello, "key");
+		set resp.http.hello2 = hydrogen.decrypt(resp.http.hello, "key", "fallback_value");
+		set resp.http.fallback = hydrogen.decrypt(resp.http.hello, "incorrect_key", "fallback_value");
 	}
 } -start
 
@@ -19,4 +20,5 @@ client c1 {
 	txreq -url "/"
 	rxresp
 	expect resp.http.hello2 == "the brown fox jumped over the lazy dog"
+	expect resp.http.fallback == "fallback_value"
 } -run

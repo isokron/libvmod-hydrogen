@@ -25,10 +25,10 @@ $Event event_function
 
 $Function STRING encrypt(STRING str, STRING key)
 
-Encrypt the string in `str` using key `key` and return a base64 encoded value of it.
+Encrypt the string in `str` using key `key` and return a HEX encoded value of it.
 
-$Function STRING decrypt(STRING b64str, STRING key)
+$Function STRING decrypt(STRING str, STRING key, STRING fallback)
 
-Decrypt the encrypted base64 encoded string `b64str` using `key` and return the cleartext
-version of it.
+Decrypt a HEX encoded encrypted string `str` using `key` and return the cleartext
+version of it. If decoding or decryption fails, return `fallback`.
 
