@@ -94,7 +94,7 @@ vmod_encrypt(VRT_CTX, VCL_STRING str, VCL_STRING key)
 VCL_STRING
 vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING fallback)
 {
-    void * cleartext = NULL;
+    void * plaintext = NULL;
     int cipherlen;
 
     if (encoded_ciphertext == NULL) {
@@ -134,20 +134,20 @@ vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING 
         return (NULL);
     }
 
-    cleartext = ctx->ws->f;
-    memset(cleartext, '\0', ws_needed);
+    plaintext = ctx->ws->f;
+    memset(plaintext, '\0', ws_needed);
 
-    if (hydro_secretbox_decrypt(cleartext, ciphertext, cipherlen, 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
+    if (hydro_secretbox_decrypt(plaintext, ciphertext, cipherlen, 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
         VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): decryption failed");
         goto err;
     }
 
-    assert(strlen(cleartext) == cipherlen - hydro_secretbox_HEADERBYTES);
+    assert(strlen(plaintext) == cipherlen - hydro_secretbox_HEADERBYTES);
     WS_Release(ctx->ws, cipherlen - hydro_secretbox_HEADERBYTES);
-    return (cleartext);
+    return (plaintext);
 
 err:
-    strcpy(cleartext, fallback);
-    WS_Release(ctx->ws, strlen(cleartext));
-    return (cleartext);
+    strcpy(plaintext, fallback);
+    WS_Release(ctx->ws, strlen(plaintext));
+    return (plaintext);
 }
