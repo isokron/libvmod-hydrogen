@@ -22,21 +22,21 @@
 int v_matchproto_(vmod_event_f)
 vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
-	(void)ctx;
-	(void)priv;
+    (void)ctx;
+    (void)priv;
 
-	switch (e) {
-	case VCL_EVENT_LOAD:
-		if (hydro_init() != 0) {
-			VRT_fail(ctx, "libhydrogen unable to hydro_init()");
-		}
-		break;
-	case VCL_EVENT_WARM:
-	case VCL_EVENT_COLD:
-	case VCL_EVENT_DISCARD:
-		break;
-	}
-	return (0);
+    switch (e) {
+    case VCL_EVENT_LOAD:
+        if (hydro_init() != 0) {
+            VRT_fail(ctx, "libhydrogen unable to hydro_init()");
+        }
+        break;
+    case VCL_EVENT_WARM:
+    case VCL_EVENT_COLD:
+    case VCL_EVENT_DISCARD:
+        break;
+    }
+    return (0);
 }
 
 
@@ -47,17 +47,17 @@ vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 VCL_STRING
 vmod_encrypt(VRT_CTX, VCL_STRING str, VCL_STRING key)
 {
-	char *encoded = NULL;
+    char *encoded = NULL;
 
-	if (str == NULL) {
-		VRT_fail(ctx, "encrypt(): str can not be empty");
-		return (NULL);
-	}
+    if (str == NULL) {
+        VRT_fail(ctx, "encrypt(): str can not be empty");
+        return (NULL);
+    }
 
-	if (key == NULL) {
-		VRT_fail(ctx, "encrypt(): key must be set");
-		return (NULL);
-	}
+    if (key == NULL) {
+        VRT_fail(ctx, "encrypt(): key must be set");
+        return (NULL);
+    }
 
     int cipherlen = hydro_secretbox_HEADERBYTES + strlen(str);
 
@@ -65,89 +65,89 @@ vmod_encrypt(VRT_CTX, VCL_STRING str, VCL_STRING key)
     AN(ciphertext);
 
     if (hydro_secretbox_encrypt(ciphertext, str, strlen(str), 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
-		VRT_fail(ctx, "encryption failed");
+        VRT_fail(ctx, "encryption failed");
         return (NULL);
-	}
+    }
 
-	int enclen = cipherlen * 2 + 1;   // Per the documentation.
+    int enclen = cipherlen * 2 + 1;   // Per the documentation.
 
     unsigned maxlen = WS_RES(ctx->ws);
-	if (maxlen < enclen) {
+    if (maxlen < enclen) {
         WS_Release(ctx->ws, 0);
-		VRT_fail(ctx, "allocation failed");
+        VRT_fail(ctx, "allocation failed");
         return(NULL);
-	}
+    }
 
-	memset(ctx->ws->f, '\0', enclen+1);
-	encoded = hydro_bin2hex(ctx->ws->f, enclen, ciphertext, cipherlen);
-	if (encoded == NULL) {
+    memset(ctx->ws->f, '\0', enclen+1);
+    encoded = hydro_bin2hex(ctx->ws->f, enclen, ciphertext, cipherlen);
+    if (encoded == NULL) {
         WS_Release(ctx->ws, 0);
-		VRT_fail(ctx, "hex encoding failed");
+        VRT_fail(ctx, "hex encoding failed");
         return(NULL);
-	}
+    }
 
-	WS_Release(ctx->ws, enclen);
-	return (encoded);
+    WS_Release(ctx->ws, enclen);
+    return (encoded);
 }
 
 
 VCL_STRING
 vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING fallback)
 {
-	void * cleartext = NULL;
-	int cipherlen;
+    void * cleartext = NULL;
+    int cipherlen;
 
-	if (encoded_ciphertext == NULL) {
-		VRT_fail(ctx, "decrypt(): ciphertext can not be empty");
-		return (NULL);
-	}
-	if (key == NULL) {
-		VRT_fail(ctx, "decrypt(): key must be set");
-		return (NULL);
-	}
-
-	/* Decode the HEX encoded ciphertext to binary on the stack. */
-	uint8_t * ciphertext = alloca(strlen(encoded_ciphertext));
-	AN(ciphertext);
-
-	cipherlen = hydro_hex2bin(ciphertext, strlen(encoded_ciphertext),
-								  encoded_ciphertext, strlen(encoded_ciphertext),
-								  NULL, NULL);
-
-	if (cipherlen < 0) {
-		VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): hex decoding failed");
-        goto err;
-	}
-
-	/* Get some buffer space to place the decrypted string into */
-    unsigned maxlen = WS_RES(ctx->ws);
-	if (maxlen <= 0) {
-        WS_Release(ctx->ws, 0);
-		VRT_fail(ctx, "allocation failed");
+    if (encoded_ciphertext == NULL) {
+        VRT_fail(ctx, "decrypt(): ciphertext can not be empty");
         return (NULL);
-	}
+    }
+    if (key == NULL) {
+        VRT_fail(ctx, "decrypt(): key must be set");
+        return (NULL);
+    }
 
-	unsigned ws_needed = cipherlen - hydro_secretbox_HEADERBYTES + 1;
-	if (maxlen < ws_needed) {
+    /* Decode the HEX encoded ciphertext to binary on the stack. */
+    uint8_t * ciphertext = alloca(strlen(encoded_ciphertext));
+    AN(ciphertext);
+
+    cipherlen = hydro_hex2bin(ciphertext, strlen(encoded_ciphertext),
+                                  encoded_ciphertext, strlen(encoded_ciphertext),
+                                  NULL, NULL);
+
+    if (cipherlen < 0) {
+        VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): hex decoding failed");
+        goto err;
+    }
+
+    /* Get some buffer space to place the decrypted string into */
+    unsigned maxlen = WS_RES(ctx->ws);
+    if (maxlen <= 0) {
         WS_Release(ctx->ws, 0);
-		VRT_fail(ctx, "decrypt(): workspace would overflow");
-		return (NULL);
+        VRT_fail(ctx, "allocation failed");
+        return (NULL);
     }
 
-	cleartext = ctx->ws->f;
-	memset(cleartext, '\0', ws_needed);
-
-	if (hydro_secretbox_decrypt(cleartext, ciphertext, cipherlen, 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
-		VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): decryption failed");
-		goto err;
+    unsigned ws_needed = cipherlen - hydro_secretbox_HEADERBYTES + 1;
+    if (maxlen < ws_needed) {
+        WS_Release(ctx->ws, 0);
+        VRT_fail(ctx, "decrypt(): workspace would overflow");
+        return (NULL);
     }
 
-	assert(strlen(cleartext) == cipherlen - hydro_secretbox_HEADERBYTES);
-	WS_Release(ctx->ws, cipherlen - hydro_secretbox_HEADERBYTES);
-	return (cleartext);
+    cleartext = ctx->ws->f;
+    memset(cleartext, '\0', ws_needed);
+
+    if (hydro_secretbox_decrypt(cleartext, ciphertext, cipherlen, 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
+        VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): decryption failed");
+        goto err;
+    }
+
+    assert(strlen(cleartext) == cipherlen - hydro_secretbox_HEADERBYTES);
+    WS_Release(ctx->ws, cipherlen - hydro_secretbox_HEADERBYTES);
+    return (cleartext);
 
 err:
-	strcpy(cleartext, fallback);
-	WS_Release(ctx->ws, strlen(cleartext));
-	return (cleartext);
+    strcpy(cleartext, fallback);
+    WS_Release(ctx->ws, strlen(cleartext));
+    return (cleartext);
 }
