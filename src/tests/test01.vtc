@@ -9,6 +9,10 @@ varnish v1 -vcl+backend {
 	import std;
 	import hydrogen from "${pwd}/../.libs/libvmod_hydrogen.so";
 
+	sub vcl_init {
+		hydrogen.encrypt("some pre-created plaintext", "key");
+        }
+
 	sub vcl_deliver {
                 # Does encryption work?
 		set resp.http.hello = hydrogen.encrypt("the brown fox jumped over the lazy dog", "key");
