@@ -17,11 +17,10 @@ jobs:
       run: sudo apt-get update && sudo apt-get install curl gnupg apt-transport-https
     - name: Add v-c.o repo key
       run: curl -L https://packagecloud.io/varnishcache/varnish60lts/gpgkey | sudo apt-key add -
-    - name: Add v-c.o repo key
-      run: sudo apt-get update && sudo apt-get install varnish varnish-dev
-    - name: autogen
+    - name: Add v-c.o repo
+      run: echo -e "deb https://packagecloud.io/varnishcache/varnish60lts/ubuntu/ bionic main\ndeb-src https://packagecloud.io/varnishcache/varnish60lts/ubuntu/ bionic main\n" | sudo tee /etc/apt/sources.list.d/varnishcache_varnish60lts.list
     - name: Install prereqs
-      run: sudo apt-get install make gcc varnish varnish-dev
+      run: sudo apt-get update && sudo apt-get install make gcc varnish varnish-dev
     - name: autogen
       run: ./autogen.sh
     - name: configure
