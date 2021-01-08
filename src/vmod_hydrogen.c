@@ -6,7 +6,7 @@
 
 #include "cache/cache.h"
 #include "vtim.h"
-#include "libhydrogen/hydrogen.h"
+#include "foreign/hydrogen.h"
 
 #include "vcc_hydrogen_if.h"
 
