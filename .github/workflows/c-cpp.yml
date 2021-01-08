@@ -13,6 +13,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Prepare to add v-c.o repo.
+      run: sudo apt-get update && sudo apt-get install curl gnupg apt-transport-https
+    - name: Add v-c.o repo key
+      run: curl -L https://packagecloud.io/varnishcache/varnish60lts/gpgkey | sudo apt-key add -
+    - name: Add v-c.o repo key
+      run: sudo apt-get update && sudo apt-get install varnish varnish-dev
+    - name: autogen
+    - name: Install prereqs
+      run: sudo apt-get install make gcc varnish varnish-dev
+    - name: autogen
+      run: ./autogen.sh
     - name: configure
       run: ./configure
     - name: make
