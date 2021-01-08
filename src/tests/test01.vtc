@@ -7,7 +7,7 @@ server s1 {
 
 varnish v1 -vcl+backend {
 	import std;
-	import hydrogen from "${pwd}/../.libs/libvmod_hydrogen.so";
+	import ${vmod_hydrogen};
 
 	sub vcl_init {
 		hydrogen.encrypt("some pre-created plaintext", "key");
