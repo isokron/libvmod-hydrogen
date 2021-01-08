@@ -27,5 +27,5 @@ jobs:
       run: ./configure
     - name: make
       run: make
-    - name: make check VERBOSE=1
-      run: make check
+    - name: make check
+      run: make check VERBOSE=1; cat src/test-suite-log
