@@ -21,7 +21,7 @@ USAGE
 Best just to look at tests/*.vtc for now.
 
 
-$Event event_function
+$Event event
 
 $Function STRING encrypt(STRING str, STRING key)
 
