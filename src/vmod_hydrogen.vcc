@@ -4,7 +4,7 @@
 # Author: Lasse Karstensen <lasse@isokron.no>
 #
 
-$Module hydrogen 3 Hydrogen VMOD
+$Module hydrogen 3 "Hydrogen VMOD"
 
 DESCRIPTION
 ===========
