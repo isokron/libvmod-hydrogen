@@ -33,6 +33,10 @@ varnish v1 -vcl+backend {
 
                 # No errors on >32 byte key.
 		set resp.http.l2 = hydrogen.encrypt("foo", "Poj3AifaheNiasuawo9waequaa8aex9ahp1oweF9AhBaahi0ik");
+
+                # Is empty ok?
+		set resp.http.l3 = hydrogen.encrypt("", "key");
+		set resp.http.l4 = hydrogen.decrypt("", "key", "fallback");
 	}
 } -start
 
@@ -47,4 +51,7 @@ client c1 {
 	expect resp.http.l1 == "foo"
 
 	expect resp.http.l2 != ""
+
+	expect resp.http.l3 != <unset>
+	expect resp.http.l4 == "fallback"
 } -run

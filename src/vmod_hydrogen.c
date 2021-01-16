@@ -94,47 +94,45 @@ vmod_encrypt(VRT_CTX, VCL_STRING str, VCL_STRING key)
 VCL_STRING
 vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING fallback)
 {
-    void * plaintext = NULL;
-    int cipherlen;
+    AN(encoded_ciphertext);
+    AN(key);
+    AN(fallback);
 
-    if (encoded_ciphertext == NULL) {
-        VRT_fail(ctx, "decrypt(): ciphertext can not be empty");
-        return (NULL);
+    /* Get some buffer space to place the decrypted string into */
+    unsigned maxlen = WS_ReserveAll(ctx->ws);
+    if (maxlen <= 0) {
+        WS_Release(ctx->ws, 0);
+        VRT_fail(ctx, "allocation failed");
+        return (fallback);
     }
-    if (key == NULL) {
+
+    if (strlen(key) == 0) {
         VRT_fail(ctx, "decrypt(): key must be set");
-        return (NULL);
+        return (fallback);
     }
 
     /* Decode the HEX encoded ciphertext to binary on the stack. */
     uint8_t * ciphertext = alloca(strlen(encoded_ciphertext));
     AN(ciphertext);
 
+    int cipherlen;
     cipherlen = hydro_hex2bin(ciphertext, strlen(encoded_ciphertext),
-                                  encoded_ciphertext, strlen(encoded_ciphertext),
-                                  NULL, NULL);
+                              encoded_ciphertext, strlen(encoded_ciphertext),
+                              NULL, NULL);
 
-    if (cipherlen < 0) {
+    if (cipherlen <= 0) {
         VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): hex decoding failed");
         goto err;
     }
 
-    /* Get some buffer space to place the decrypted string into */
-    unsigned maxlen = WS_RES(ctx->ws);
-    if (maxlen <= 0) {
-        WS_Release(ctx->ws, 0);
-        VRT_fail(ctx, "allocation failed");
-        return (NULL);
-    }
-
-    unsigned ws_needed = cipherlen - hydro_secretbox_HEADERBYTES + 1;
+    unsigned ws_needed = cipherlen + 1;
+    assert(ws_needed >= 0);
     if (maxlen < ws_needed) {
-        WS_Release(ctx->ws, 0);
         VRT_fail(ctx, "decrypt(): workspace would overflow");
-        return (NULL);
+        goto err;
     }
 
-    plaintext = ctx->ws->f;
+    void * plaintext = ctx->ws->f;
     memset(plaintext, '\0', ws_needed);
 
     if (hydro_secretbox_decrypt(plaintext, ciphertext, cipherlen, 0, HYDROGEN_CONTEXT, (const uint8_t *)key) != 0) {
@@ -147,7 +145,6 @@ vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING 
     return (plaintext);
 
 err:
-    strcpy(plaintext, fallback);
-    WS_Release(ctx->ws, strlen(plaintext));
-    return (plaintext);
+    WS_Release(ctx->ws, 0);
+    return (fallback);
 }
