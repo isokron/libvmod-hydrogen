@@ -1,5 +1,5 @@
 #
-# Copyright Isokron AS (c) 2019.
+# Copyright isokron AS (c) 2019-2021.
 #
 # Author: Lasse Karstensen <lasse@isokron.no>
 #
@@ -9,16 +9,40 @@ $Module hydrogen 3 "Hydrogen VMOD"
 DESCRIPTION
 ===========
 
-This is vmod-hydrogen, allowing usage of libhydrogen in Varnish VCL.
+This is vmod-hydrogen implementing data encryption in Varnish VCL.
 
 From https://github.com/jedisct1/libhydrogen :
 
 > The Hydrogen library is a small, easy-to-use, hard-to-misuse cryptographic library.
 
+Main purpose of this module is to easily encrypt and decrypt cookies made inside
+Varnish and kept on the client side. Bonus points for getting integrity protection
+"for free".
+
+
 USAGE
 =====
 
-Best just to look at tests/*.vtc for now.
+
+::
+    import hydrogen;
+    import std;
+
+    sub vcl_recv {
+        set req.http.x-session-id = hydrogen.decrypt(req.http.Session, "very_secret_key", "fallback");
+
+        if (req.http.x-session-id == "fallback") {
+            return(synth(401, "Bad Request"));
+        }
+    }
+
+    sub vcl_deliver {
+        set resp.http.Set-Cookie = "session-id=" + hydrogen.encrypt("" + std.random(1000, 9999), "very_secret_key") + ";";
+    }
+
+
+FUNCTIONS
+=========
 
 
 $Prefix vmod

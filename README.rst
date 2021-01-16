@@ -1,127 +1,69 @@
-============
-vmod-hydrogen
-============
-
-notice
-------
-
-For new developments, we recommend to consider using
-https://github.com/Dridi/vcdk
-
-SYNOPSIS
-========
-
-import hydrogen;
 
 DESCRIPTION
 ===========
 
-Hydrogen Varnish vmod demonstrating how to write an out-of-tree Varnish vmod.
+This is vmod-hydrogen implementing data encryption in Varnish VCL.
 
-Implements the traditional Hello World as a vmod.
+From https://github.com/jedisct1/libhydrogen :
 
-FUNCTIONS
-=========
+> The Hydrogen library is a small, easy-to-use, hard-to-misuse cryptographic library.
 
-hello
------
+Main purpose of this module is to easily encrypt and decrypt cookies made inside
+Varnish and kept on the client side. Bonus points for getting integrity protection
+"for free".
 
-Prototype
-        ::
-
-                hello(STRING S)
-Return value
-	STRING
-Description
-	Returns "Hello, " prepended to S
-Hydrogen
-        ::
-
-                set resp.http.hello = hydrogen.hello("World");
-
-INSTALLATION
-============
-
-The source tree is based on autotools to configure the building, and
-does also have the necessary bits in place to do functional unit tests
-using the ``varnishtest`` tool.
-
-Building requires the Varnish header files and uses pkg-config to find
-the necessary paths.
-
-Usage::
-
- ./autogen.sh
- ./configure
-
-If you have installed Varnish to a non-standard directory, call
-``autogen.sh`` and ``configure`` with ``PKG_CONFIG_PATH`` pointing to
-the appropriate path. For instance, when varnishd configure was called
-with ``--prefix=$PREFIX``, use
-
-::
-
- export PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig
- export ACLOCAL_PATH=${PREFIX}/share/aclocal
-
-The module will inherit its prefix from Varnish, unless you specify a
-different ``--prefix`` when running the ``configure`` script for this
-module.
-
-Make targets:
-
-* make - builds the vmod.
-* make install - installs your vmod.
-* make check - runs the unit tests in ``src/tests/*.vtc``.
-* make distcheck - run check and prepare a tarball of the vmod.
-
-If you build a dist tarball, you don't need any of the autotools or
-pkg-config. You can build the module simply by running::
-
- ./configure
- make
-
-Installation directories
-------------------------
-
-By default, the vmod ``configure`` script installs the built vmod in the
-directory relevant to the prefix. The vmod installation directory can be
-overridden by passing the ``vmoddir`` variable to ``make install``.
 
 USAGE
 =====
 
-In your VCL you could then use this vmod along the following lines::
 
+::
+
+        import std;
         import hydrogen;
 
-        sub vcl_deliver {
-                # This sets resp.http.hello to "Hello, World"
-                set resp.http.hello = hydrogen.hello("World");
+        sub vcl_recv {
+                if (req.http.cookie !~ "session-id") {
+                        set req.http.x-cookie-value = regsub(req.http.Cookie, ".*session-id=([^;]*).*$", "\1");
+                        set req.http.x-session-id = hydrogen.decrypt(req.http.x-cookie-value, "very_secret_key", "fallback");
+
+                        # If key is incorrect, or body fails libhydrogen's integrity checks, we get the fallback value.
+                        if (req.http.x-session-id == "fallback") {
+                                return(synth(401, "Bad Request"));
+                        }
+
+                        std.log("session-id is: " + req.http.x-session-id);
+                }
         }
 
-COMMON PROBLEMS
-===============
+        sub vcl_deliver {
+                if (req.http.cookie !~ "session-id") {
+                        #set resp.http.Set-Cookie = "session-id=" + hydrogen.encrypt("" + std.random(1000, 9999), "very_secret_key") + ";";
+                }
+        }
 
-* configure: error: Need varnish.m4 -- see README.rst
 
-  Check whether ``PKG_CONFIG_PATH`` and ``ACLOCAL_PATH`` were set correctly
-  before calling ``autogen.sh`` and ``configure``
+FUNCTIONS
+=========
 
-* Incompatibilities with different Varnish Cache versions
 
-  Make sure you build this vmod against its correspondent Varnish Cache version.
-  For instance, to build against Varnish Cache 4.1, this vmod must be built from
-  branch 4.1.
+$Prefix vmod
+$Event vmod_event
 
-START YOUR OWN VMOD
-===================
+$Function STRING encrypt(STRING str, STRING key)
 
-The basic steps to start a new vmod from this hydrogen are::
+Encrypt the string in `str` using key `key` and return a HEX encoded value of it.
 
-  name=myvmod
-  git clone libvmod-hydrogen libvmod-$name
-  cd libvmod-$name
-  ./rename-vmod-script $name
+$Function STRING decrypt(STRING str, STRING key, STRING fallback)
 
-and follow the instructions output by rename-vmod-script
+Decrypt a HEX encoded encrypted string `str` using `key` and return the plaintext
+version of it. If decoding or decryption fails, return `fallback`.
+
+AUTHOR
+======
+
+Copyright isokron AS (c) 2019-2021.
+
+Author: Lasse Karstensen <lasse@isokron.no>
+
+
