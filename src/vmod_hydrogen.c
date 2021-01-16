@@ -95,7 +95,6 @@ VCL_STRING
 vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING fallback)
 {
     AN(encoded_ciphertext);
-    AN(key);
     AN(fallback);
 
     /* Get some buffer space to place the decrypted string into */
@@ -106,7 +105,7 @@ vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING 
         return (fallback);
     }
 
-    if (strlen(key) == 0) {
+    if (key == NULL || strlen(key) == 0) {
         VRT_fail(ctx, "decrypt(): key must be set");
         return (fallback);
     }
