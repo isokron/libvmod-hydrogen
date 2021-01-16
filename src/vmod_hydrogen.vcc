@@ -21,7 +21,8 @@ USAGE
 Best just to look at tests/*.vtc for now.
 
 
-$Event event
+$Prefix vmod
+$Event vmod_event
 
 $Function STRING encrypt(STRING str, STRING key)
 
