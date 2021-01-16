@@ -47,14 +47,14 @@ FUNCTIONS
 =========
 
 
-$Prefix vmod
-$Event vmod_event
-
-$Function STRING encrypt(STRING str, STRING key)
+::
+    STRING encrypt(STRING str, STRING key)
 
 Encrypt the string in `str` using key `key` and return a HEX encoded value of it.
 
-$Function STRING decrypt(STRING str, STRING key, STRING fallback)
+
+::
+    STRING decrypt(STRING str, STRING key, STRING fallback)
 
 Decrypt a HEX encoded encrypted string `str` using `key` and return the plaintext
 version of it. If decoding or decryption fails, return `fallback`.

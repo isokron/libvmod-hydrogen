@@ -44,7 +44,6 @@ USAGE
 FUNCTIONS
 =========
 
-
 $Prefix vmod
 $Event vmod_event
 
