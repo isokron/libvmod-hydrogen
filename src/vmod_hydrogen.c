@@ -97,14 +97,6 @@ vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING 
     AN(encoded_ciphertext);
     AN(fallback);
 
-    /* Get some buffer space to place the decrypted string into */
-    unsigned maxlen = WS_ReserveAll(ctx->ws);
-    if (maxlen <= 0) {
-        WS_Release(ctx->ws, 0);
-        VRT_fail(ctx, "allocation failed");
-        return (fallback);
-    }
-
     if (key == NULL || strlen(key) == 0) {
         VRT_fail(ctx, "decrypt(): key must be set");
         return (fallback);
@@ -118,6 +110,14 @@ vmod_decrypt(VRT_CTX, VCL_STRING encoded_ciphertext, VCL_STRING key, VCL_STRING 
     cipherlen = hydro_hex2bin(ciphertext, strlen(encoded_ciphertext),
                               encoded_ciphertext, strlen(encoded_ciphertext),
                               NULL, NULL);
+
+    /* Get some buffer space to place the decrypted string into */
+    unsigned maxlen = WS_ReserveAll(ctx->ws);
+    if (maxlen <= 0) {
+        WS_Release(ctx->ws, 0);
+        VRT_fail(ctx, "allocation failed");
+        return (fallback);
+    }
 
     if (cipherlen <= 0) {
         VSLb(ctx->vsl, SLT_VCL_Log, "decrypt(): hex decoding failed");
