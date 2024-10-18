@@ -63,7 +63,6 @@ vmod_random_string(VRT_CTX, VCL_INT length)
     for (int pos = 0; pos < length; pos++) {
         char c = charset[hydro_random_u32() % charset_size];
         resultptr[pos] = c;
-        pos++;
     }
     resultptr[length] = '\0';
 
