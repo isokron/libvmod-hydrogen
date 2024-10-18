@@ -1,21 +1,27 @@
 #ifndef hydrogen_H
 #define hydrogen_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
+#if !(defined(__linux__) && defined(__KERNEL__))
+#    include <stdbool.h>
+#    include <stdint.h>
+#    include <stdlib.h>
+#endif
+
+#if !defined(__cplusplus) && defined(__GNUC__)
+#    pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+#endif
 
 #ifdef __cplusplus
-# ifdef __GNUC__
-#  pragma GCC diagnostic ignored "-Wlong-long"
-# endif
+#    ifdef __GNUC__
+#        pragma GCC diagnostic ignored "-Wlong-long"
+#    endif
 extern "C" {
 #endif
 
 #if defined(__clang__) || defined(__GNUC__)
-# define _hydro_attr_(X) __attribute__(X)
+#    define _hydro_attr_(X) __attribute__(X)
 #else
-# define _hydro_attr_(X)
+#    define _hydro_attr_(X)
 #endif
 #define _hydro_attr_deprecated_         _hydro_attr_((deprecated))
 #define _hydro_attr_malloc_             _hydro_attr_((malloc))
@@ -25,11 +31,11 @@ extern "C" {
 #define _hydro_attr_weak_               _hydro_attr_((weak))
 
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-# define _hydro_attr_aligned_(X)        __declspec(align(X))
+#    define _hydro_attr_aligned_(X) __declspec(align(X))
 #elif defined(__clang__) || defined(__GNUC__)
-# define _hydro_attr_aligned_(X)        _hydro_attr_((aligned(X)))
+#    define _hydro_attr_aligned_(X) _hydro_attr_((aligned(X)))
 #else
-# define _hydro_attr_aligned_(X)
+#    define _hydro_attr_aligned_(X)
 #endif
 
 #define HYDRO_VERSION_MAJOR 1
@@ -56,11 +62,11 @@ void hydro_random_reseed(void);
 
 /* ---------------- */
 
-#define hydro_hash_BYTES 32
-#define hydro_hash_BYTES_MAX 65535
-#define hydro_hash_BYTES_MIN 16
+#define hydro_hash_BYTES        32
+#define hydro_hash_BYTES_MAX    65535
+#define hydro_hash_BYTES_MIN    16
 #define hydro_hash_CONTEXTBYTES 8
-#define hydro_hash_KEYBYTES 32
+#define hydro_hash_KEYBYTES     32
 
 typedef struct hydro_hash_state {
     uint32_t state[12];
@@ -84,9 +90,9 @@ int hydro_hash_hash(uint8_t *out, size_t out_len, const void *in_, size_t in_len
 /* ---------------- */
 
 #define hydro_secretbox_CONTEXTBYTES 8
-#define hydro_secretbox_HEADERBYTES (20 + 16)
-#define hydro_secretbox_KEYBYTES 32
-#define hydro_secretbox_PROBEBYTES 16
+#define hydro_secretbox_HEADERBYTES  (20 + 16)
+#define hydro_secretbox_KEYBYTES     32
+#define hydro_secretbox_PROBEBYTES   16
 
 void hydro_secretbox_keygen(uint8_t key[hydro_secretbox_KEYBYTES]);
 
@@ -111,9 +117,9 @@ int hydro_secretbox_probe_verify(const uint8_t probe[hydro_secretbox_PROBEBYTES]
 /* ---------------- */
 
 #define hydro_kdf_CONTEXTBYTES 8
-#define hydro_kdf_KEYBYTES 32
-#define hydro_kdf_BYTES_MAX 65535
-#define hydro_kdf_BYTES_MIN 16
+#define hydro_kdf_KEYBYTES     32
+#define hydro_kdf_BYTES_MAX    65535
+#define hydro_kdf_BYTES_MIN    16
 
 void hydro_kdf_keygen(uint8_t key[hydro_kdf_KEYBYTES]);
 
@@ -123,11 +129,11 @@ int hydro_kdf_derive_from_key(uint8_t *subkey, size_t subkey_len, uint64_t subke
 
 /* ---------------- */
 
-#define hydro_sign_BYTES 64
-#define hydro_sign_CONTEXTBYTES 8
+#define hydro_sign_BYTES          64
+#define hydro_sign_CONTEXTBYTES   8
 #define hydro_sign_PUBLICKEYBYTES 32
 #define hydro_sign_SECRETKEYBYTES 64
-#define hydro_sign_SEEDBYTES 32
+#define hydro_sign_SEEDBYTES      32
 
 typedef struct hydro_sign_state {
     hydro_hash_state hash_st;
@@ -165,10 +171,10 @@ int hydro_sign_verify(const uint8_t csig[hydro_sign_BYTES], const void *m_, size
 /* ---------------- */
 
 #define hydro_kx_SESSIONKEYBYTES 32
-#define hydro_kx_PUBLICKEYBYTES 32
-#define hydro_kx_SECRETKEYBYTES 32
-#define hydro_kx_PSKBYTES 32
-#define hydro_kx_SEEDBYTES 32
+#define hydro_kx_PUBLICKEYBYTES  32
+#define hydro_kx_SECRETKEYBYTES  32
+#define hydro_kx_PSKBYTES        32
+#define hydro_kx_SEEDBYTES       32
 
 typedef struct hydro_kx_keypair {
     uint8_t pk[hydro_kx_PUBLICKEYBYTES];
@@ -182,9 +188,7 @@ typedef struct hydro_kx_session_keypair {
 
 typedef struct hydro_kx_state {
     hydro_kx_keypair eph_kp;
-    uint8_t          h[32];
-    uint8_t          ck[32];
-    uint8_t          k[32];
+    hydro_hash_state h_st;
 } hydro_kx_state;
 
 void hydro_kx_keygen(hydro_kx_keypair *static_kp);
@@ -194,7 +198,7 @@ void hydro_kx_keygen_deterministic(hydro_kx_keypair *static_kp,
 
 /* NOISE_N */
 
-#define hydro_kx_N_PACKET1BYTES 32
+#define hydro_kx_N_PACKET1BYTES (32 + 16)
 
 int hydro_kx_n_1(hydro_kx_session_keypair *kp, uint8_t packet1[hydro_kx_N_PACKET1BYTES],
                  const uint8_t psk[hydro_kx_PSKBYTES],
@@ -205,8 +209,8 @@ int hydro_kx_n_2(hydro_kx_session_keypair *kp, const uint8_t packet1[hydro_kx_N_
 
 /* NOISE_KK */
 
-#define hydro_kx_KK_PACKET1BYTES 32
-#define hydro_kx_KK_PACKET2BYTES 32
+#define hydro_kx_KK_PACKET1BYTES (32 + 16)
+#define hydro_kx_KK_PACKET2BYTES (32 + 16)
 
 int hydro_kx_kk_1(hydro_kx_state *state, uint8_t packet1[hydro_kx_KK_PACKET1BYTES],
                   const uint8_t           peer_static_pk[hydro_kx_PUBLICKEYBYTES],
@@ -218,14 +222,14 @@ int hydro_kx_kk_2(hydro_kx_session_keypair *kp, uint8_t packet2[hydro_kx_KK_PACK
                   const hydro_kx_keypair *static_kp);
 
 int hydro_kx_kk_3(hydro_kx_state *state, hydro_kx_session_keypair *kp,
-                  const uint8_t packet2[hydro_kx_KK_PACKET2BYTES],
+                  const uint8_t           packet2[hydro_kx_KK_PACKET2BYTES],
                   const hydro_kx_keypair *static_kp);
 
 /* NOISE_XX */
 
-#define hydro_kx_XX_PACKET1BYTES 32
-#define hydro_kx_XX_PACKET2BYTES 80
-#define hydro_kx_XX_PACKET3BYTES 48
+#define hydro_kx_XX_PACKET1BYTES (32 + 16)
+#define hydro_kx_XX_PACKET2BYTES (32 + 32 + 16 + 16)
+#define hydro_kx_XX_PACKET3BYTES (32 + 16 + 16)
 
 int hydro_kx_xx_1(hydro_kx_state *state, uint8_t packet1[hydro_kx_XX_PACKET1BYTES],
                   const uint8_t psk[hydro_kx_PSKBYTES]);
@@ -245,11 +249,27 @@ int hydro_kx_xx_4(hydro_kx_state *state, hydro_kx_session_keypair *kp,
                   const uint8_t packet3[hydro_kx_XX_PACKET3BYTES],
                   const uint8_t psk[hydro_kx_PSKBYTES]);
 
+/* NOISE_NK */
+
+#define hydro_kx_NK_PACKET1BYTES (32 + 16)
+#define hydro_kx_NK_PACKET2BYTES (32 + 16)
+
+int hydro_kx_nk_1(hydro_kx_state *state, uint8_t packet1[hydro_kx_NK_PACKET1BYTES],
+                  const uint8_t psk[hydro_kx_PSKBYTES],
+                  const uint8_t peer_static_pk[hydro_kx_PUBLICKEYBYTES]);
+
+int hydro_kx_nk_2(hydro_kx_session_keypair *kp, uint8_t packet2[hydro_kx_NK_PACKET2BYTES],
+                  const uint8_t packet1[hydro_kx_NK_PACKET1BYTES],
+                  const uint8_t psk[hydro_kx_PSKBYTES], const hydro_kx_keypair *static_kp);
+
+int hydro_kx_nk_3(hydro_kx_state *state, hydro_kx_session_keypair *kp,
+                  const uint8_t packet2[hydro_kx_NK_PACKET2BYTES]);
+
 /* ---------------- */
 
-#define hydro_pwhash_CONTEXTBYTES 8
+#define hydro_pwhash_CONTEXTBYTES   8
 #define hydro_pwhash_MASTERKEYBYTES 32
-#define hydro_pwhash_STOREDBYTES 128
+#define hydro_pwhash_STOREDBYTES    128
 
 void hydro_pwhash_keygen(uint8_t master_key[hydro_pwhash_MASTERKEYBYTES]);
 
@@ -305,9 +325,9 @@ int hydro_unpad(const unsigned char *buf, size_t padded_buflen, size_t blocksize
 #define HYDRO_HWTYPE_ATMEGA328 1
 
 #ifndef HYDRO_HWTYPE
-# ifdef __AVR__
-#  define HYDRO_HWTYPE HYDRO_HWTYPE_ATMEGA328
-# endif
+#    ifdef __AVR__
+#        define HYDRO_HWTYPE HYDRO_HWTYPE_ATMEGA328
+#    endif
 #endif
 
 #ifdef __cplusplus
