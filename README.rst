@@ -48,22 +48,32 @@ FUNCTIONS
 
 
 ::
+
     STRING encrypt(STRING str, STRING key)
 
 Encrypt the string in `str` using key `key` and return a HEX encoded value of it.
 
 
 ::
+
     STRING decrypt(STRING str, STRING key, STRING fallback)
 
 Decrypt a HEX encoded encrypted string `str` using `key` and return the plaintext
 version of it. If decoding or decryption fails, return `fallback`.
 
+
+::
+
+    STRING random_string(INT length)
+
+Return a cryptographically safe string of a given length.
+
+Use is for session keys, nonces, and similar where std.random() is unsafe.
+
+
 AUTHOR
 ======
 
-Copyright isokron AS (c) 2019-2021.
+Copyright Isokron AS (c) 2019-2024.
 
 Author: Lasse Karstensen <lasse@isokron.no>
-
-
