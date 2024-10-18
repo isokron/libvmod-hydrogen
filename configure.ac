@@ -1,6 +1,6 @@
 AC_PREREQ([2.68])
-AC_INIT([libvmod-hydrogen], [0.1], [], [vmod-hydrogen])
-AC_COPYRIGHT([Public Domain])
+AC_INIT([libvmod-hydrogen], [20241018.0], [], [vmod-hydrogen])
+AC_COPYRIGHT([MIT])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR(src/vmod_hydrogen.vcc)
