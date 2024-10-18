@@ -1,0 +1,41 @@
+#!/bin/bash -x
+#
+# rm -rf build && make install DESTDIR=`pwd`/build/
+
+set -o errexit
+
+GITREF=$(git rev-parse --short HEAD)
+VERSION=${VERSION:-$(date +"%Y%m%d.0+gitref${GITREF}")}
+ITERATION=${ITERATION:-2}
+
+FN=libvmod-hydrogen_${VERSION}-${ITERATION}_amd64.deb
+
+
+#test -d _build && rm -r _build
+#mkdir -p _build/usr/lib/varnish/vmods/
+#cp build/libvmod*.so _build/usr/lib/varnish/vmods/
+#
+
+#apt show varnish| grep Provides
+BUILD_ABI_VER="varnishabi-7.1"
+# FIXME: Doesn't seem to be a way for fpm to add depends on
+# manually added Provides like varnishabi-8.0?
+
+test -f ${FN} && rm ${FN}
+
+fpm -s dir -t deb \
+	--name libvmod-hydrogen \
+	-m lasse@isokron.no \
+	--architecture amd64 \
+	--url "https://github.com/isokron/libvmod-hydrogen/" \
+	--license "MIT" \
+	--depends "varnish > 6.0" \
+	--depends "varnish <= 7.0" \
+	--vendor "Isokron AS" \
+	--version ${VERSION} \
+	--iteration ${ITERATION} \
+	--description "Data encryption with libhydrogen in Varnish Cache VCL" \
+	-C build
+
+dpkg -I ${FN}
+dpkg -c ${FN}

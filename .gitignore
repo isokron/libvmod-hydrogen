@@ -30,3 +30,6 @@ Makefile.in
 /src/vcc_*_if.c
 /src/vcc_*_if.h
 /src/vmod_*rst
+
+build/**
+*.deb
