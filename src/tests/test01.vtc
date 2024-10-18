@@ -37,6 +37,9 @@ varnish v1 -vcl+backend {
                 # Is empty ok?
 		set resp.http.l3 = hydrogen.encrypt("", "key");
 		set resp.http.l4 = hydrogen.decrypt("", "key", "fallback");
+
+                # and a random string?
+		set resp.http.s0 = hydrogen.random_string(20);
 	}
 } -start
 
@@ -54,4 +57,6 @@ client c1 {
 
 	expect resp.http.l3 != <unset>
 	expect resp.http.l4 == "fallback"
+
+	expect resp.http.s0 != <unset>
 } -run

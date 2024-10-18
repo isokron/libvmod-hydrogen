@@ -41,6 +41,37 @@ vmod_event(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 
 
 /*
+ * Generate a safe random string of length n, and return it to VCL.
+ */
+VCL_STRING
+vmod_random_string(VRT_CTX, VCL_INT length)
+{
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    size_t charset_size = sizeof(charset) - 1;
+
+    if (length < 1) {
+        VRT_fail(ctx, "random_string(): length can not be zero or negative.");
+        return (NULL);
+    }
+
+    char *resultptr = WS_Alloc(ctx->ws, length+1);
+    if (resultptr == NULL) {
+        VRT_fail(ctx, "workspace allocation failed");
+        return(NULL);
+    }
+
+    for (int pos = 0; pos < length; pos++) {
+        char c = charset[hydro_random_u32() % charset_size];
+        resultptr[pos] = c;
+        pos++;
+    }
+    resultptr[length] = '\0';
+
+    return resultptr;
+}
+
+
+/*
  * Encrypt a string, copy the encoded version to the workspace, and return that
  * back to VCL.
  */

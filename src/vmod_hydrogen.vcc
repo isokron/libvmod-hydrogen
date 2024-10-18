@@ -56,3 +56,8 @@ $Function STRING decrypt(STRING str, STRING key, STRING fallback)
 Decrypt a HEX encoded encrypted string `str` using `key` and return the plaintext
 version of it. If decoding or decryption fails, return `fallback`.
 
+$Function STRING random_string(INT length)
+
+Return a cryptographically safe string of a given length.
+
+Use is for session keys, nonces, and similar where std.random() is unsafe.
